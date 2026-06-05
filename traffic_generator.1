@@ -1,0 +1,104 @@
+.TH TRAFFIC_GENERATOR 1 "June 2026" "Version 2.0" "QoS Traffic Generator Manual"
+.SH NAME
+traffic_generator \- interactive QoS throughput traffic characterization and path testing utility
+
+.SH SYNOPSIS
+.B python3 traffic_generator.py
+[\fB\-r\fR|\fB\-\-receiver\fR]
+[\fB\-\-dry\-run\fR]
+[\fB\-\-man\fR|\fB\-\-manual\fR]
+
+.SH DESCRIPTION
+.B traffic_generator.py
+is an advanced command-line tool designed for telecommunication and network engineering teams to run QoS (Quality of Service) characterization throughput tests between secure Linux VMs.
+The script handles automated sequential port mapping, offers auto-equal bandwidth allocation across multiple classes, bypasses kernel ICMP rate limits, parses pre-flight RTT logs, calculates path limits (BDP, TCP Window, MSS, burst intervals), spawns concurrent DSCP-marked socket streams (using iperf3 or hping3 backends), displays a live traffic dashboard, compiles vector PDF reports, and provides SMTP email reporting options.
+
+.SH OPTIONS
+.IP "\fB\-r, \-\-receiver\fR"
+Start the script in active Receiver/Server daemon mode. In this mode, the VM listens on sequentially mapped TCP or UDP ports corresponding to selected QoS classes. Can be configured to launch background iperf3 servers or use a custom multi-threaded Python socket listener.
+.IP "\fB\-\-dry\-run\fR"
+Validate user inputs, resolve routes, calculate network limits, and compile execution commands without launching background traffic processes or modifying host kernel properties.
+.IP "\fB\-\-man, \-\-manual\fR"
+Render the interactive built-in terminal manual page and exit immediately.
+
+.SH QOS CLASSES & DSCP REGISTRY
+The utility integrates 16 standard QoS categories from Ingress mapping standards. The 6-bit DSCP (Differentiated Services Code Point) decimal value is shifted left by 2 bits to obtain the 8-bit IPv4 Type of Service (ToS) byte:
+
+.TS
+tab(|) allbox;
+cb | cb | cb | cb | cb
+lfB | lf1 | lf1 | lf1 | lf1.
+QoS Class Name | DSCP Dec | ToS Hex | FC ID | Profile
+default | 0 | 0x00 | 0 | Out (Best-Effort)
+af11 | 10 | 0x28 | 2 | In (Assured)
+af12 | 12 | 0x30 | 2 | Out (Assured)
+af13 | 14 | 0x38 | 2 | Out (Assured)
+af21 | 18 | 0x48 | 3 | In (Low-1)
+af22 | 20 | 0x50 | 3 | Out (Low-1)
+af23 | 22 | 0x58 | 3 | Out (Low-1)
+af31 | 26 | 0x68 | 3 | In (Low-1)
+af32 | 28 | 0x70 | 3 | Out (Low-1)
+af33 | 30 | 0x78 | 3 | Out (Low-1)
+af41 | 34 | 0x88 | 4 | In (High-2)
+af42 | 36 | 0x90 | 4 | Out (High-2)
+af43 | 38 | 0x98 | 4 | Out (High-2)
+ef | 46 | 0xB8 | 5 | In (Expedited)
+nc1 | 48 | 0xC0 | 6 | In (High-1)
+nc2 | 56 | 0xE0 | 7 | In (Network Control)
+.TE
+
+.SH PATH ENGINEERING FORMULAS
+The script automatically queries the outgoing interface to calculate the following metrics:
+.IP "1. Maximum Segment Size (MSS):"
+MSS = Path MTU \- 40 Bytes.
+.IP "2. Bandwidth-Delay Product (BDP):"
+BDP = (Avg RTT in seconds * Agreed Link Rate in bps) / 8. This is the optimal sliding buffer window size.
+.IP "3. Per-Class Burst Intervals:"
+Interval (ms) = (Bucket Size Bytes) / (Flow Target Rate Bps) * 1000. Under hping3, this defines packet transmit intervals.
+
+.SH ENVIRONMENT VARIABLES
+The tool integrates with secure mail servers. Export the following variables before runtime to bypass manual SMTP input prompts:
+.IP "\fBSMTP_SERVER\fR"
+FQDN or IP of the mail transfer agent (e.g., "smtp.gmail.com"). Defaults to "smtp.gmail.com".
+.IP "\fBSMTP_PORT\fR"
+MTA port (e.g., "587" or "465"). Defaults to "587".
+.IP "\fBSMTP_USER\fR"
+Username/email for SMTP login.
+.IP "\fBSMTP_PASS\fR"
+Password or App Password for SMTP authentication.
+.IP "\fBSMTP_FROM\fR"
+The Sender address displayed on the header (e.g., "QoS Testing <testbed@corp.com>").
+.IP "\fBSMTP_TLS\fR"
+Set to "true" to initiate TLS start handshake. Defaults to "true".
+.IP "\fBSMTP_SSL\fR"
+Set to "true" to connect via SSL wrapper socket. Defaults to "false".
+
+.SH EXAMPLES
+.IP "Start custom socket receiver listening on default ports starting at 5201:"
+.B sudo python3 traffic_generator.py \-\-receiver
+.PP
+.IP "Run an interactive client test to a receiver VM:"
+.B sudo python3 traffic_generator.py
+.PP
+.IP "Execute a non-destructive dry run to test commands and route path calculations:"
+.B sudo python3 traffic_generator.py \-\-dry\-run
+.PP
+.IP "Load the manual page directly from the repository folder:"
+.B man ./traffic_generator.1
+
+.SH FILES
+.I qos_throughput_report.pdf
+.RS
+Vector-based multi-page report containing host details, RTT, BDP metrics, graphical speedometer gauge, and periodic live NIC captures.
+.RE
+.I qos_test_report.log
+.RS
+Text log summarizing test results and configurations.
+.RE
+
+.SH AUTHOR
+Prasath Suthagar (Engineering Authority).
+
+.SH LICENSE
+Copyright (C) 2026 Prasath Suthagar. All Rights Reserved. (Internal Use Only).
+Proprietary and confidential.
