@@ -8,3 +8,7 @@ __pycache__/
 
 # PDF Reports
 *.pdf
+
+# Mail sender module
+sendmail.py
+
